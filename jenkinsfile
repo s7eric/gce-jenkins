@@ -1,0 +1,15 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    sshagent(['ssh-agent']) {
+                        git branch: 'main', credentialsId: 'ssh-agent', url: 'git@github.com:s7eric/gce-jenkins.git'
+                    }
+                }
+            }
+        }
+    }
+}
