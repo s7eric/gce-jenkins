@@ -1,13 +1,39 @@
 pipeline {
     agent any
-    
+
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
+        string(name: 'GIT_URL', defaultValue: 'git@github.com:s7eric/gce-jenkins.git', description: 'Git_url to build')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true , description: 'Run tests after cloning')
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
+    }
+
     stages {
         stage('Clone Repository') {
             steps {
                 script {
-                    
-                        git branch: 'main', credentialsId: 'ssh-agent', url: 'git@github.com:s7eric/gce-jenkins.git'
-                    
+                    git branch: ${params.BRANCH_NAME}, credentialsId: 'ssh-agent', url: ${params.GIT_URL}
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            when {
+                expression { params.RUN_TESTS }
+            }
+            steps {
+                script {
+                    echo "Running tests..."
+                    // sh 'make test'  // Replace with your actual test command
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    echo "Deploying to ${params.ENVIRONMENT} environment..."
+                    // sh "deploy_script.sh --env=${params.ENVIRONMENT}"  // Replace with actual deployment command
                 }
             }
         }
