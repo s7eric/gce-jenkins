@@ -8,11 +8,70 @@ pipeline {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
     }
 
+    environment {
+        // Global environment variables
+        APP_NAME = 'my-application'
+        VERSION = "${BUILD_NUMBER}"
+    }
+
     stages {
         stage('Clone Repository') {
             steps {
                 script {
                     git branch: params.BRANCH_NAME, credentialsId: 'ssh-agent', url: params.GIT_URL
+                }
+            }
+        }
+
+        stage('Setup Environment Config') {
+            steps {
+                script {
+                    // Set environment-specific variables
+                    def envConfigs = [
+                        'dev': [
+                            'SERVER': 'dev-server.example.com',
+                            'DB_HOST': 'dev-db.example.com',
+                            'REPLICAS': '1',
+                            'RESOURCE_LIMIT': 'small'
+                        ],
+                        'staging': [
+                            'SERVER': 'staging-server.example.com',
+                            'DB_HOST': 'staging-db.example.com',
+                            'REPLICAS': '2',
+                            'RESOURCE_LIMIT': 'medium'
+                        ],
+                        'prod': [
+                            'SERVER': 'prod-server.example.com',
+                            'DB_HOST': 'prod-db.example.com',
+                            'REPLICAS': '3',
+                            'RESOURCE_LIMIT': 'large'
+                        ]
+                    ]
+                    
+                    // Load environment-specific config
+                    def currentEnv = params.ENVIRONMENT
+                    def config = envConfigs[currentEnv]
+                    
+                    // Set environment variables
+                    env.DEPLOY_SERVER = config.SERVER
+                    env.DB_HOST = config.DB_HOST
+                    env.REPLICAS = config.REPLICAS
+                    env.RESOURCE_LIMIT = config.RESOURCE_LIMIT
+                    
+                    echo "Environment: ${currentEnv}"
+                    echo "Deploy server: ${env.DEPLOY_SERVER}"
+                    echo "Database host: ${env.DB_HOST}"
+                    echo "Replicas: ${env.REPLICAS}"
+                    echo "Resource limit: ${env.RESOURCE_LIMIT}"
+                    
+                    // Create env-specific config file
+                    writeFile file: 'env.config', text: """
+                        ENVIRONMENT=${currentEnv}
+                        SERVER=${config.SERVER}
+                        DB_HOST=${config.DB_HOST}
+                        REPLICAS=${config.REPLICAS}
+                        RESOURCE_LIMIT=${config.RESOURCE_LIMIT}
+                    """
                 }
             }
         }
@@ -23,8 +82,17 @@ pipeline {
             }
             steps {
                 script {
-                    echo "Running tests..."
+                    echo "Running tests for ${params.ENVIRONMENT} environment..."
                     // sh 'make test'  // Replace with your actual test command
+                }
+            }
+        }
+
+        stage('Build Artifacts') {
+            steps {
+                script {
+                    echo "Building artifacts for ${params.ENVIRONMENT} environment..."
+                    // sh "make build ENV=${params.ENVIRONMENT}"
                 }
             }
         }
@@ -32,10 +100,46 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo "Deploying to ${params.ENVIRONMENT} environment..."
-                    // sh "deploy_script.sh --env=${params.ENVIRONMENT}"  // Replace with actual deployment command
+                    echo "Deploying to ${params.ENVIRONMENT} environment on ${env.DEPLOY_SERVER}..."
+                    // Load config file
+                    // sh "cat env.config"
+                    
+                    // Environment-specific deployment steps
+                    switch(params.ENVIRONMENT) {
+                        case 'dev':
+                            echo "Running dev-specific deployment steps..."
+                            // sh "deploy_script.sh --env=dev --server=${env.DEPLOY_SERVER} --replicas=${env.REPLICAS}"
+                            break
+                        case 'staging':
+                            echo "Running staging-specific deployment steps..."
+                            // sh "deploy_script.sh --env=staging --server=${env.DEPLOY_SERVER} --replicas=${env.REPLICAS}"
+                            break
+                        case 'prod':
+                            echo "Adding approval step for production deployment"
+                            // Production deployment might need additional steps like manual approval
+                            // sh "deploy_script.sh --env=prod --server=${env.DEPLOY_SERVER} --replicas=${env.REPLICAS}"
+                            break
+                    }
                 }
             }
+        }
+
+        stage('Post-Deploy Verification') {
+            steps {
+                script {
+                    echo "Verifying deployment on ${params.ENVIRONMENT}..."
+                    // sh "verify_deployment.sh --env=${params.ENVIRONMENT} --server=${env.DEPLOY_SERVER}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline executed successfully! Application deployed to ${params.ENVIRONMENT}."
+        }
+        failure {
+            echo "Pipeline failed! Check the logs for details."
         }
     }
 }
