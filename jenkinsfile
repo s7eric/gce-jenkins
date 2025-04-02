@@ -4,7 +4,7 @@ pipeline {
     parameters {
         string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
         string(name: 'GIT_URL', defaultValue: 'git@github.com:s7eric/gce-jenkins.git', description: 'Git_url to build')
-        booleanParam(name: 'RUN_TESTS', defaultValue: true , description: 'Run tests after cloning')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run tests after cloning')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
     }
 
@@ -12,7 +12,7 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    git branch: {params.BRANCH_NAME}, credentialsId: 'ssh-agent', url: {params.GIT_URL}
+                    git branch: params.BRANCH_NAME, credentialsId: 'ssh-agent', url: params.GIT_URL
                 }
             }
         }
