@@ -6,7 +6,7 @@ pipeline {
         string(name: 'GIT_URL', defaultValue: 'git@github.com:s7eric/gce-jenkins.git', description: 'Git_url to build')
         booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run tests after cloning')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
-        string(name: 'NGINX_PORT', defaultValue: '8080', description: 'Port for Nginx test server')
+        string(name: 'NGINX_PORT', defaultValue: '80', description: 'Port for Nginx test server')
     }
 
     environment {
@@ -14,7 +14,6 @@ pipeline {
         APP_NAME = 'my-application'
         VERSION = "${BUILD_NUMBER}"
         NGINX_CONTAINER_NAME = "test-nginx-${BUILD_NUMBER}"
-        TEST_DIR = "${WORKSPACE}/nginx-test"
     }
 
     stages {
@@ -32,17 +31,16 @@ pipeline {
                     echo "Setting up Nginx test environment..."
                     
                     // Create directory for Nginx config and app files
-                    sh "mkdir -p ${TEST_DIR}"
-                    
+
                     // Create a simple Nginx configuration file using cat with EOF
                     sh """
-                    cat << EOF > ${TEST_DIR}/nginx.conf
+                    cat << EOF > ./nginx.conf
                         server {
-                            listen ${params.NGINX_PORT};
+                            listen 80;
                             server_name localhost;
                             
                             location / {
-                                root ${TEST_DIR}/html;
+                                root /usr/share/nginx/html/;
                                 index index.html;
                                 try_files \$uri \$uri/ =404;
                             }
@@ -51,17 +49,13 @@ pipeline {
                     """
                     
                     // Copy application files to Nginx html directory
-                    sh "mkdir -p ${TEST_DIR}/html"
-                    sh "cp -r . ${TEST_DIR}/html/"
+                    sh "sudo apt update -y && sudo apt install nginx -y"
+                    sh "sudo cp -r ./* /usr/share/nginx/html/"
+                    sh "sudo cp -r ./nginx.conf /etc/nginx/conf.d/default.conf"
+                    sh "sudo nginx -t"
                     
                     // Start Nginx container for testing
-                    sh """
-                    docker run -d --name ${env.NGINX_CONTAINER_NAME} \\
-                        -p ${params.NGINX_PORT}:${params.NGINX_PORT} \\
-                        -v ${TEST_DIR}/nginx.conf:/etc/nginx/conf.d/default.conf \\
-                        -v ${TEST_DIR}/html:/usr/share/nginx/html \\
-                        nginx:alpine
-                    """
+                    
                     
                     echo "Nginx test server started at http://localhost:${params.NGINX_PORT}"
                 }
