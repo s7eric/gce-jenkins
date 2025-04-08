@@ -14,6 +14,7 @@ pipeline {
         APP_NAME = 'my-application'
         VERSION = "${BUILD_NUMBER}"
         NGINX_CONTAINER_NAME = "test-nginx-${BUILD_NUMBER}"
+        SONAR_HOST_URL = "http://3.88.220.199:9000"
     }
 
     stages {
@@ -21,6 +22,39 @@ pipeline {
             steps {
                 script {
                     git branch: params.BRANCH_NAME, credentialsId: 'ssh-agent', url: params.GIT_URL
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    echo "Running SonarQube analysis..."
+                    withSonarQubeEnv('sonar') {
+                        withCredentials([string(credentialsId: 'sonar-id', variable: 'SONAR_TOKEN')]) {
+                            sh '''
+                                sonar-scanner \
+                                -Dsonar.projectKey=${APP_NAME} \
+                                -Dsonar.projectName=${APP_NAME} \
+                                -Dsonar.projectVersion=${VERSION} \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONAR_HOST_URL} \
+                                -Dsonar.login=${SONAR_TOKEN}
+                            '''
+                        }
+                    }
+                    
+                    // Optional: Wait for quality gate result
+                    timeout(time: 1, unit: 'HOURS') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            echo "SonarQube Quality Gate failed: ${qg.status}"
+                            // Uncomment below to make the pipeline fail if quality gate fails
+                            // error "SonarQube Quality Gate failed: ${qg.status}"
+                        } else {
+                            echo "SonarQube Quality Gate passed"
+                        }
+                    }
                 }
             }
         }
