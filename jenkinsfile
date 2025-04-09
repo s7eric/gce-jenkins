@@ -15,6 +15,8 @@ pipeline {
         VERSION = "${BUILD_NUMBER}"
         NGINX_CONTAINER_NAME = "test-nginx-${BUILD_NUMBER}"
         SONAR_HOST_URL = "http://3.88.220.199:9000"
+        SCANNER_HOME = tool 'sonar' // Define the SonarQube scanner tool
+            
     }
 
     stages {
