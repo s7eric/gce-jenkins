@@ -54,35 +54,6 @@ pipeline {
                 script {
                     echo "Building Docker image..."
                     
-                    // Create a Dockerfile if it doesn't exist
-                    sh """
-                    if [ ! -f Dockerfile ]; then
-                        cat << EOF > Dockerfile
-                        FROM nginx:alpine
-                        COPY . /usr/share/nginx/html/
-                        COPY nginx.conf /etc/nginx/conf.d/default.conf
-                        EXPOSE 80
-                        CMD ["nginx", "-g", "daemon off;"]
-                        EOF
-                    fi
-                    
-                    # Create nginx.conf if it doesn't exist
-                    if [ ! -f nginx.conf ]; then
-                        cat << EOF > nginx.conf
-                        server {
-                            listen 80;
-                            server_name localhost;
-                            
-                            location / {
-                                root /usr/share/nginx/html/;
-                                index index.html;
-                                try_files \$uri \$uri/ =404;
-                            }
-                        }
-                        EOF
-                    fi
-                    """
-                    
                     // Build the Docker image
                     sh "docker build -t ${DOCKER_REPO}:${params.DOCKER_TAG} ."
                 }
