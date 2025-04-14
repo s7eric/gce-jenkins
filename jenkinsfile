@@ -54,6 +54,8 @@ pipeline {
                 script {
                     echo "Building Docker image..."
                     
+    
+                    
                     // Build the Docker image
                     sh "docker build -t ${DOCKER_REPO}:${params.DOCKER_TAG} ."
                 }
